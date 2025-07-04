@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resume Board with Admin Mode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    main {
+      max-width: 1000px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: white;
+      border-radius: 8px;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    .resume-board {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .resume-card {
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 6px;
+      background: #fafafa;
+      width: 280px;
+      cursor: pointer;
+    }
+    .resume-card:hover {
+      background: #eef;
+    }
+    .resume-details {
+      margin-top: 2rem;
+      border-top: 1px solid #ddd;
+      padding-top: 1rem;
+    }
+    .resume-photo {
+      max-width: 120px;
+      height: auto;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    input, textarea, select, button {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+    button {
+      background: #2980b9;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1f618d;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Resume Board</h1>
+    <p>Upload resumes, search by name or skill, and manage them in admin mode</p>
+  </header>
+
+  <main>
+    <h2>Upload Resume</h2>
+    <form id="resumeForm">
+      <label>Full Name</label>
+      <input type="text" id="fullName" required />
+
+      <label>Current Role</label>
+      <input type="text" id="role" required />
+
+      <label>Experience / Introduction</label>
+      <textarea id="experience" required></textarea>
+
+      <label>Skills / Keywords (comma separated)</label>
+      <input type="text" id="skills" required />
+
+      <label>Resume PDF</label>
+      <input type="file" id="pdfFile" accept="application/pdf" required />
+
+      <label>Photo (optional)</label>
+      <input type="file" id="photoFile" accept="image/*" />
+
+      <button type="submit">Upload Resume</button>
+    </form>
+
+    <h2>Upload Resumes from Folder</h2>
+    <input type="file" id="batchPDFs" accept="application/pdf" multiple />
+
+    <h2>Search Resumes</h2>
+    <input type="text" id="searchBox" placeholder="Search by name or skill..." />
+
+    <h2>Admin Tools</h2>
+    <button id="adminToggle">Toggle Admin Mode</button>
+    <button id="deleteAllBtn" style="display:none; background:#c0392b;">🗑️ Delete All Resumes</button>
+
+    <h2>Resume Board</h2>
+    <div class="resume-board" id="resumeBoard"></div>
+
+    <div class="resume-details" id="resumeDetails">
+      <h2>Resume Details</h2>
+      <p>Select a resume to view details.</p>
+    </div>
+  </main>
+
+  <script>
+    let resumes = JSON.parse(localStorage.getItem("resumes")) || [];
+    let adminMode = false;
+
+    function saveResumes() {
+      localStorage.setItem("resumes", JSON.stringify(resumes));
+    }
+
+    function renderBoard() {
+      const board = document.getElementById("resumeBoard");
+      board.innerHTML = "";
+      resumes.forEach((resume, index) => {
+        const div = document.createElement("div");
+        div.className = "resume-card";
+        div.innerHTML = `
+          <h3>${resume.name}</h3>
+          <p>${resume.role}</p>
+          <p><strong>Skills:</strong> ${resume.skills}</p>
+          ${adminMode ? `<button style="background:#e74c3c;" onclick="deleteResume(${index})">❌ Delete</button>` : ""}
+        `;
+        div.onclick = () => showDetails(index);
+        board.appendChild(div);
+      });
+    }
+
+    function showDetails(index) {
+      const r = resumes[index];
+      const d = document.getElementById("resumeDetails");
+      d.innerHTML = `
+        <h2>${r.name}</h2>
+        ${r.photo ? `<img src="${r.photo}" class="resume-photo"/>` : ""}
+        <p><strong>Role:</strong> ${r.role}</p>
+        <p><strong>Experience:</strong> ${r.experience}</p>
+        <p><strong>Skills:</strong> ${r.skills}</p>
+        ${r.pdf ? `<p><a href="${r.pdf}" target="_blank" download>📄 Download Resume PDF</a></p>` : ""}
+        <button onclick="alert('Interview request sent!')">Request Interview</button>
+      `;
+    }
+
+    function deleteResume(index) {
+      if (confirm("Are you sure you want to delete this resume?")) {
+        resumes.splice(index, 1);
+        saveResumes();
+        renderBoard();
+        document.getElementById("resumeDetails").innerHTML = "<p>Resume deleted.</p>";
+      }
+    }
+
+    document.getElementById("adminToggle").addEventListener("click", function () {
+      adminMode = !adminMode;
+      alert(adminMode ? "Admin mode ON" : "Admin mode OFF");
+      document.getElementById("deleteAllBtn").style.display = adminMode ? "inline-block" : "none";
+      renderBoard();
+    });
+
+    document.getElementById("deleteAllBtn").addEventListener("click", function () {
+      if (confirm("Delete ALL resumes? This cannot be undone.")) {
+        resumes = [];
+        saveResumes();
+        renderBoard();
+        document.getElementById("resumeDetails").innerHTML = "<p>All resumes deleted.</p>";
+      }
+    });
+
+    document.getElementById("resumeForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const name = document.getElementById("fullName").value;
+      const role = document.getElementById("role").value;
+      const experience = document.getElementById("experience").value;
+      const skills = document.getElementById("skills").value;
+      const readerPDF = new FileReader();
+      const readerIMG = new FileReader();
+      const pdfFile = document.getElementById("pdfFile").files[0];
+      const imgFile = document.getElementById("photoFile").files[0];
+
+      readerPDF.onload = function() {
+        const newResume = {
+          name, role, experience, skills,
+          pdf: readerPDF.result,
+          photo: ""
+        };
+
+        if (imgFile) {
+          readerIMG.onload = function() {
+            newResume.photo = readerIMG.result;
+            resumes.push(newResume);
+            saveResumes();
+            renderBoard();
+            alert("Resume uploaded!");
+            document.getElementById("resumeForm").reset();
+          };
+          readerIMG.readAsDataURL(imgFile);
+        } else {
+          resumes.push(newResume);
+          saveResumes();
+          renderBoard();
+          alert("Resume uploaded!");
+          document.getElementById("resumeForm").reset();
+        }
+      };
+      readerPDF.readAsDataURL(pdfFile);
+    });
+
+    document.getElementById("batchPDFs").addEventListener("change", function () {
+      const files = Array.from(this.files).filter(file => file.type === "application/pdf");
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function () {
+          const resume = {
+            name: file.name.replace(".pdf", ""),
+            role: "Unknown",
+            experience: "Auto-imported from folder",
+            skills: "N/A",
+            pdf: reader.result,
+            photo: ""
+          };
+          resumes.push(resume);
+          saveResumes();
+          renderBoard();
+        };
+        reader.readAsDataURL(file);
+      });
+      alert(`${files.length} resumes imported.`);
+    });
+
+    document.getElementById("searchBox").addEventListener("input", function() {
+      const query = this.value.toLowerCase();
+      const cards = document.querySelectorAll(".resume-card");
+      resumes.forEach((resume, i) => {
+        const text = (resume.name + resume.skills).toLowerCase();
+        cards[i].style.display = text.includes(query) ? "block" : "none";
+      });
+    });
+
+    renderBoard();
+  </script>
+</body>
+</html>
